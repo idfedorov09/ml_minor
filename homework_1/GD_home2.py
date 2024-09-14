@@ -12,6 +12,8 @@ class GradientDescentLinearRegression:
         self.Y = np.array([])
         self.m = 0
         self.b = 0
+        self.mse = 0
+        self.elapsed_time = 0.0
 
     def PlotData(self, filename: str = 'gradient_descent_plot'):
         plt.figure(figsize=(10, 6), dpi=150)
@@ -51,19 +53,19 @@ class GradientDescentLinearRegression:
             m -= self.learning_rate * m_gradient
             b -= self.learning_rate * b_gradient
 
-            # Вычисляем среднеквадратичную ошибку (MSE) на каждой итерации
             mse = np.mean((self.Y - Y_pred) ** 2)
             errors.append(mse)
 
+        self.mse = errors[-1]
         self.m, self.b = m, b
         print(f"Optimized parameters: m = {self.m}, b = {self.b}")
-        print(f"Final error (MSE): {errors[-1]}")
+        print(f"Final error (MSE): {self.mse}")
 
     def predict(self):
         return self.m * self.X ** 2 - self.b * self.X ** 3
 
     def test_pipeline(self, test_number: int = 0):
-        print(f"{i}. Testing learning rate = {learning_rate} with iterations = {iterations}")
+        print(f"{test_number}. Testing learning rate = {self.learning_rate} with iterations = {self.iterations}")
         start_time = time.time()
 
         self.GenerateData()
@@ -71,24 +73,49 @@ class GradientDescentLinearRegression:
         self.PlotData(f"result_{test_number}")
 
         end_time = time.time()
-        elapsed_time = end_time - start_time
-        print(f"Time taken for {i}: {elapsed_time:.4f} seconds\n")
+        self.elapsed_time = end_time - start_time
+        print(f"Time taken for {test_number}: {self.elapsed_time:.4f} seconds\n")
 
-if __name__ == '__main__':
+        return self.elapsed_time, self.mse
+
+def models_scoring(models_results, alpha=0.7, beta=0.3):
+    print("*"*50)
+    results = np.array(models_results)
+    times, mses = results[:, 0], results[:, 1]
+    best_time = np.min(times)
+    best_mse = np.min(mses)
+    scores = alpha * (mses / best_mse) + beta * (times / best_time)
+    for model_num, score in enumerate(scores):
+        print(f"{model_num}. Score: {score:.4f}")
+    print("*"*50 + "\n")
+    best_model_index = np.argmin(scores)
+    print(f"Best model is Model {best_model_index} with score {scores[best_model_index]:.4f}")
+
+def main():
     sys.stdout = open('result.txt', 'w')
     test_params = [
         (1e-05, 1e3),
-        (1e-08, 1e6), # too much (~10 sec)
-        (1e-08, 1e5), # too much mse
-        (1e-06, 1e5)
+        (1e-08, 1e6), # too long (~10 sec)
+        (1e-08, 1e5),
+        (1e-06, 1e5),
+        (1e-06, 1e4),
+        (1e-05, 1e2),
+        (1e-05, 1e4)
     ]
 
+    models_results = []
     for i in range(len(test_params)):
         learning_rate, iterations = test_params[i]
         iterations = int(iterations)
-        GradientDescentLinearRegression(
+        current_model_result = GradientDescentLinearRegression(
             learning_rate,
             iterations
         ).test_pipeline(i)
+        models_results.append(current_model_result)
+
+    models_scoring(models_results)
 
     sys.stdout.close()
+
+if __name__ == '__main__':
+    main()
