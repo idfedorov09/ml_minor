@@ -137,7 +137,7 @@ class DTree:
             else:
                 self.traverse(entry, node.right_child, columns)
 
-    def classify(self, data, answers=None):
+    def classify(self, data, answers=None, mark=""):
         columns = data.columns.to_list()
         X_data = data.to_numpy()
 
@@ -152,13 +152,11 @@ class DTree:
             answers_data = le.fit_transform(answers_data)
             accuracy = 0
             for p, r in zip(self.predicted, answers_data):
-                print(" predicted : ", p, " real : ", r)
                 if p == r:
                     accuracy+=1
 
-            print(" accuracy : ", accuracy/len(self.predicted))
+            print(f"{mark}accuracy : ", accuracy/len(self.predicted))
             return accuracy/len(self.predicted)
-            # show_plot(answers_data, self.predicted)
 
     def build_tree(self, train_data, target_data):
         self.root = Node()
@@ -209,7 +207,7 @@ class ForestEvaluator:
         mode_prediction = predictions_df.mode(axis=1)[0]
 
         accuracy = accuracy_score(y_test, mode_prediction)
-        print(f'RF#{self.current_tree} accuracy:' + str(accuracy))
+        print(f'RF#{self.current_tree} TOTAL accuracy:' + str(accuracy))
         show_plot(y_test, mode_prediction, filename=self._path_to_save(f'RF#{self.current_tree}'), accuracy=accuracy)
 
 
@@ -223,7 +221,7 @@ def main():
     data = pd.read_csv("Stars.csv")
     X = data.drop(["Star color", "Spectral Class", "Star type"], axis=1)
     y = data[target_feature]
-    forest_evaluator = ForestEvaluator(X, y, [5])
+    forest_evaluator = ForestEvaluator(X, y, range(1, 3))
     forest_evaluator.run()
 
 
