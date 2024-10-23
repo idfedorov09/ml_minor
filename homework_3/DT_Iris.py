@@ -21,7 +21,7 @@ def show_plot(y_true, y_pred, filename=None, accuracy=None):
         os.makedirs(directory)
 
     if accuracy is not None:
-        plt.text(0.5, 1.1, f'Accuracy: {accuracy:.2f}', ha='center', va='center', transform=plt.gca().transAxes,
+        plt.text(0.5, 1.1, f'Accuracy: {accuracy:.4f}', ha='center', va='center', transform=plt.gca().transAxes,
                  fontsize=12, color='red', fontweight='bold')
 
     cf_matrix = confusion_matrix(answers_data, y_pred)
@@ -180,10 +180,11 @@ class DTree:
         self.decide(MainDataSet, self.root)
 
 class ForestEvaluator:
-    def __init__(self, X, y, trees_sizes):
+    def __init__(self, X, y, trees_sizes, max_features=None):
         self.current_tree = -1
         self.X, self.y = X, y
         self.trees_sizes = trees_sizes
+        self.max_features = max_features
 
     def _cur_folder_name(self):
         return f'forest_{self.current_tree}/'
@@ -196,25 +197,36 @@ class ForestEvaluator:
         trees_results = []
         _, X_test, _, y_test = train_test_split(self.X, self.y, test_size=0.33, random_state=42)
 
+        # Получаем количество доступных фич
+        total_features = X_test.shape[1]
+
         for i in range(trees_count):
             # Bagging: выборка с возвращением для обучения каждого дерева
             X_train, _, y_train, _ = train_test_split(self.X, self.y, test_size=0.33, random_state=i)
 
+            # Если max_features не задан, используем все доступные фичи
+            if self.max_features is None:
+                self.max_features = total_features
+
+            selected_features = np.random.choice(total_features, self.max_features, replace=False)
+
+            X_train_selected = X_train.iloc[:, selected_features]
+            X_test_selected = X_test.iloc[:, selected_features]
+
             # Создаем и обучаем дерево решений
             Tree = DTree()
-            Tree.build_tree(X_train, y_train)
-            cur_accuracy = Tree.classify(X_test, y_test, mark=f"Tree#{i} ")
+            Tree.build_tree(X_train_selected, y_train)
+            cur_accuracy = Tree.classify(X_test_selected, y_test, mark=f"Tree#{i} ")
             trees_results.append(Tree.predicted)
             show_plot(y_test, Tree.predicted, filename=self._path_to_save(f'tree#{i}'), accuracy=cur_accuracy)
 
         predictions_df = pd.DataFrame(trees_results).T
-        mode_prediction = predictions_df.mode(axis=1)[0]
+        median_prediction = predictions_df.median(axis=1).astype(int)
 
         le = LabelEncoder()
-        accuracy = accuracy_score(le.fit_transform(y_test), mode_prediction)
+        accuracy = accuracy_score(le.fit_transform(y_test), median_prediction)
         print(f'RF#{self.current_tree} TOTAL accuracy:' + str(accuracy))
-        show_plot(y_test, mode_prediction, filename=self._path_to_save(f'RF#{self.current_tree}'), accuracy=accuracy)
-
+        show_plot(y_test, median_prediction, filename=self._path_to_save(f'RF#{self.current_tree}'), accuracy=accuracy)
 
     def run(self):
         for i in self.trees_sizes:
@@ -226,7 +238,7 @@ def main():
     data = pd.read_csv("Stars.csv")
     X = data.drop(["Star color", "Spectral Class", "Star type"], axis=1)
     y = data[target_feature]
-    forest_evaluator = ForestEvaluator(X, y, range(1, 6))
+    forest_evaluator = ForestEvaluator(X, y, range(1, 10))
     forest_evaluator.run()
 
 
