@@ -12,6 +12,10 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 def show_plot(y_true, y_pred, filename=None, accuracy=None):
+    answers_data = y_true.to_numpy()
+    le = LabelEncoder()
+    answers_data = le.fit_transform(answers_data)
+
     directory = os.path.dirname(filename)
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -20,7 +24,7 @@ def show_plot(y_true, y_pred, filename=None, accuracy=None):
         plt.text(0.5, 1.1, f'Accuracy: {accuracy:.2f}', ha='center', va='center', transform=plt.gca().transAxes,
                  fontsize=12, color='red', fontweight='bold')
 
-    cf_matrix = confusion_matrix(y_true, y_pred)
+    cf_matrix = confusion_matrix(answers_data, y_pred)
     sns.heatmap(cf_matrix, annot=True)
     if filename:
         plt.savefig(f'{filename}.png', dpi=300, bbox_inches='tight')
@@ -146,7 +150,7 @@ class DTree:
             if type(self.root.node_value) != str:
                 self.traverse(entry, self.root, columns)
 
-        if type(answers) is not None:
+        if answers is not None:
             answers_data = answers.to_numpy()
             le = LabelEncoder()
             answers_data = le.fit_transform(answers_data)
@@ -199,14 +203,15 @@ class ForestEvaluator:
             # Создаем и обучаем дерево решений
             Tree = DTree()
             Tree.build_tree(X_train, y_train)
-            cur_accuracy = Tree.classify(X_test, y_test)
+            cur_accuracy = Tree.classify(X_test, y_test, mark="Tree#i ")
             trees_results.append(Tree.predicted)
             show_plot(y_test, Tree.predicted, filename=self._path_to_save(f'tree#{i}'), accuracy=cur_accuracy)
 
         predictions_df = pd.DataFrame(trees_results).T
         mode_prediction = predictions_df.mode(axis=1)[0]
 
-        accuracy = accuracy_score(y_test, mode_prediction)
+        le = LabelEncoder()
+        accuracy = accuracy_score(le.fit_transform(y_test), mode_prediction)
         print(f'RF#{self.current_tree} TOTAL accuracy:' + str(accuracy))
         show_plot(y_test, mode_prediction, filename=self._path_to_save(f'RF#{self.current_tree}'), accuracy=accuracy)
 
@@ -221,7 +226,7 @@ def main():
     data = pd.read_csv("Stars.csv")
     X = data.drop(["Star color", "Spectral Class", "Star type"], axis=1)
     y = data[target_feature]
-    forest_evaluator = ForestEvaluator(X, y, range(1, 3))
+    forest_evaluator = ForestEvaluator(X, y, range(1, 6))
     forest_evaluator.run()
 
 
