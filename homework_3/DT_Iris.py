@@ -5,9 +5,14 @@ from collections import Counter
 import math
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+def show_plot(y_true, y_pred):
+    cf_matrix = confusion_matrix(y_true, y_pred)
+    sns.heatmap(cf_matrix, annot=True)
+    plt.show()
 
 def class_probabilities(labels):
     total_count = len(labels)
@@ -140,9 +145,7 @@ class DTree:
                     eff+=1
 
             print(" efficiency : ", eff/len(self.predicted))
-            cf_matrix = confusion_matrix(answers_data, self.predicted)
-            sns.heatmap(cf_matrix, annot=True)
-            plt.show()
+            # show_plot(answers_data, self.predicted)
 
     def build_tree(self, train_data, target_data):
         self.root = Node()
@@ -164,19 +167,31 @@ class DTree:
 def main():
     data = pd.read_csv("Stars.csv")
 
-    # Исключаем строковые столбцы
+    target_feature = "Star type"
     X = data.drop(["Star color", "Spectral Class", "Star type"], axis=1)
-    y = data["Star type"]
+    y = data[target_feature]
+    _, X_test, _, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
 
-    # Разделяем данные на обучающую и тестовую выборки
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    tree_count = 10  # количество деревьев в случайном лесу
+    trees_results = []
 
-    # Создаем и обучаем дерево решений
-    Tree = DTree()
-    Tree.build_tree(X_train, y_train)
+    for i in range(tree_count):
+        # Bagging: выборка с возвращением для обучения каждого дерева
+        X_train, _, y_train, _ = train_test_split(X, y, test_size=0.33, random_state=i)
 
-    # Классифицируем тестовую выборку и выводим метрики
-    Tree.classify(X_test, y_test)
+        # Создаем и обучаем дерево решений
+        Tree = DTree()
+        Tree.build_tree(X_train, y_train)
+        Tree.classify(X_test, y_test)
+        trees_results.append(Tree.predicted)
+
+    predictions_df = pd.DataFrame(trees_results).T
+    # Усредняем предсказания по всем деревьям
+    mode_prediction = predictions_df.mode(axis=1)[0]  # выбираем наиболее частое значение
+    # Вычисляем точность
+    accuracy = accuracy_score(y_test, mode_prediction)
+    print('accur = '+ str(accuracy))
+    show_plot(y_test, mode_prediction)
 
 if __name__ == '__main__':
     sys.stdout = open('result.txt', 'w')
