@@ -203,7 +203,7 @@ class ForestEvaluator:
             # Создаем и обучаем дерево решений
             Tree = DTree()
             Tree.build_tree(X_train, y_train)
-            cur_accuracy = Tree.classify(X_test, y_test, mark="Tree#i ")
+            cur_accuracy = Tree.classify(X_test, y_test, mark=f"Tree#{i} ")
             trees_results.append(Tree.predicted)
             show_plot(y_test, Tree.predicted, filename=self._path_to_save(f'tree#{i}'), accuracy=cur_accuracy)
 
